@@ -44,24 +44,8 @@ void Adafruit_HTU21DF::reset(void) {
 
 
 float Adafruit_HTU21DF::readTemperature(void) {
-  
-  // OK lets ready!
-  Wire.beginTransmission(HTU21DF_I2CADDR);
-  Wire.write(HTU21DF_READTEMP);
-  Wire.endTransmission();
-  
-  delay(50); // add delay between request and actual read!
-  
-  Wire.requestFrom(HTU21DF_I2CADDR, 3);
-  while (!Wire.available()) {}
+  float temp = read16(HTU21DF_READTEMP);
 
-  uint16_t t = Wire.read();
-  t <<= 8;
-  t |= Wire.read();
-
-  uint8_t crc = Wire.read();
-
-  float temp = t;
   temp *= 175.72;
   temp /= 65536;
   temp -= 46.85;
@@ -71,23 +55,7 @@ float Adafruit_HTU21DF::readTemperature(void) {
   
 
 float Adafruit_HTU21DF::readHumidity(void) {
-  // OK lets ready!
-  Wire.beginTransmission(HTU21DF_I2CADDR);
-  Wire.write(HTU21DF_READHUM);
-  Wire.endTransmission();
-  
-  delay(50); // add delay between request and actual read!
-  
-  Wire.requestFrom(HTU21DF_I2CADDR, 3);
-  while (!Wire.available()) {}
-
-  uint16_t h = Wire.read();
-  h <<= 8;
-  h |= Wire.read();
-
-  uint8_t crc = Wire.read();
-
-  float hum = h;
+  float hum = read16(HTU21DF_READHUM);
   hum *= 125;
   hum /= 65536;
   hum -= 6;
@@ -95,6 +63,62 @@ float Adafruit_HTU21DF::readHumidity(void) {
   return hum;
 }
 
+bool Adafruit_HTU21DF::readHeater(void) {
+  uint8_t userRegister = read8(HTU21DF_READREG);
+  return (userRegister & HTU21DR_BIT_HEADER);
+}
+
+void Adafruit_HTU21DF::setHeater(bool on) {
+  uint8_t userRegister = read8(HTU21DF_READREG);
+
+  if (on) {
+    userRegister |= HTU21DR_BIT_HEADER;
+  } else {
+    userRegister &= ~HTU21DR_BIT_HEADER;
+  }
+
+  write8(HTU21DF_WRITEREG, userRegister);
+}
 
 
 /*********************************************************************/
+
+void Adafruit_HTU21DF::write8(uint8_t register, uint8_t value) {
+  Wire.beginTransmission(HTU21DF_I2CADDR);
+  Wire.write(HTU21DF_READREG);
+  delay(50);
+
+  Wire.write(register);
+  Wire.write(value);
+
+  Wire.endTransmission();
+}
+
+uint8_t Adafruit_HTU21DF::read8(uint8_t register) {
+  Wire.beginTransmission(HTU21DF_I2CADDR);
+  Wire.write(HTU21DF_READREG);
+  delay(50);
+
+  Wire.write(register);
+  Wire.endTransmission();
+
+  Wire.requestFrom(HTU21DF_I2CADDR, 1);
+
+  return Wire.read();
+}
+
+uint16_t Adafruit_HTU21DF::read16(uint16_t register) {
+  Wire.beginTransmission(HTU21DF_I2CADDR);
+  Wire.write(HTU21DF_READREG);
+  delay(50);
+
+  Wire.write(register);
+  Wire.endTransmission();
+  Wire.requestFrom(HTU21DF_I2CADDR, 2);
+
+  uint16_t tmp = Wire.read();
+  tmp <<= 8;
+  tmp |= Wire.read();
+
+  return h;
+}
